@@ -833,6 +833,7 @@ class _Rolling(_Window):
         if check_minp is None:
             check_minp = _use_window
 
+        left_offset, right_offset = _window_bounds(window, center)
         blocks, obj, index = self._create_blocks()
         index, indexi = self._get_index(index=index)
         results = []
@@ -850,36 +851,25 @@ class _Rolling(_Window):
                     raise ValueError("we do not support this function "
                                      "in libwindow.{func}".format(func=func))
 
-                def func(arg, window, min_periods=None, closed=None):
+                def func(arg, left_offset, right_offset,
+                         min_periods=None, closed=None):
+                    window = right_offset - left_offset
                     minp = check_minp(min_periods, window)
                     # ensure we are only rolling on floats
                     arg = ensure_float64(arg)
-                    return cfunc(arg,
-                                 window, minp, indexi, closed, **kwargs)
+                    return cfunc(arg, left_offset, right_offset, minp,
+                                 indexi, closed, **kwargs)
 
             # calculation function
-            if center:
-                offset = _offset(window, center)
-                additional_nans = np.array([np.NaN] * offset)
-
-                def calc(x):
-                    return func(np.concatenate((x, additional_nans)),
-                                window, min_periods=self.min_periods,
-                                closed=self.closed)
-            else:
-
-                def calc(x):
-                    return func(x, window, min_periods=self.min_periods,
-                                closed=self.closed)
+            def calc(x):
+                return func(x, left_offset, right_offset,
+                            min_periods=self.min_periods, closed=self.closed)
 
             with np.errstate(all='ignore'):
                 if values.ndim > 1:
                     result = np.apply_along_axis(calc, self.axis, values)
                 else:
                     result = calc(values)
-
-            if center:
-                result = self._center_window(result, window)
 
             results.append(result)
 
@@ -988,12 +978,13 @@ class _Rolling_and_Expanding(_Rolling):
                 "silence this warning", FutureWarning, stacklevel=3)
             raw = True
 
-        def f(arg, window, min_periods, closed):
+        def f(arg, left_offset, right_offset, min_periods, closed):
+            window = right_offset - left_offset
             minp = _use_window(min_periods, window)
             if not raw:
                 arg = Series(arg, index=self.obj.index)
             return libwindow.roll_generic(
-                arg, window, minp, indexi,
+                arg, left_offset, right_offset, minp, indexi,
                 closed, offset, func, raw, args, kwargs)
 
         return self._apply(f, func, args=args, kwargs=kwargs,
@@ -1153,12 +1144,13 @@ class _Rolling_and_Expanding(_Rolling):
     def std(self, ddof=1, *args, **kwargs):
         nv.validate_window_func('std', args, kwargs)
         window = self._get_window()
+        left_offset, right_offset = _window_bounds(window, self.center)
         index, indexi = self._get_index()
 
         def f(arg, *args, **kwargs):
             minp = _require_min_periods(1)(self.min_periods, window)
-            return _zsqrt(libwindow.roll_var(arg, window, minp, indexi,
-                                             self.closed, ddof))
+            return _zsqrt(libwindow.roll_var(arg, left_offset, right_offset,
+                                             minp, indexi, self.closed, ddof))
 
         return self._apply(f, 'std', check_minp=_require_min_periods(1),
                            ddof=ddof, **kwargs)
@@ -1324,19 +1316,20 @@ class _Rolling_and_Expanding(_Rolling):
     def quantile(self, quantile, interpolation='linear', **kwargs):
         window = self._get_window()
         index, indexi = self._get_index()
+        left_offset, right_offset = _window_bounds(window, self.center)
 
         def f(arg, *args, **kwargs):
             minp = _use_window(self.min_periods, window)
             if quantile == 1.0:
-                return libwindow.roll_max(arg, window, minp, indexi,
-                                          self.closed)
+                return libwindow.roll_max(arg, left_offset, right_offset,
+                                          minp, indexi, self.closed)
             elif quantile == 0.0:
-                return libwindow.roll_min(arg, window, minp, indexi,
-                                          self.closed)
+                return libwindow.roll_min(arg, left_offset, right_offset,
+                                          minp, indexi, self.closed)
             else:
-                return libwindow.roll_quantile(arg, window, minp, indexi,
-                                               self.closed, quantile,
-                                               interpolation)
+                return libwindow.roll_quantile(arg, left_offset, right_offset,
+                                               minp, indexi, self.closed,
+                                               quantile, interpolation)
 
         return self._apply(f, 'quantile', quantile=quantile,
                            **kwargs)
@@ -1551,12 +1544,6 @@ class Rolling(_Rolling_and_Expanding):
 
             self._validate_monotonic()
             freq = self._validate_freq()
-
-            # we don't allow center
-            if self.center:
-                raise NotImplementedError("center is not implemented "
-                                          "for datetimelike and offset "
-                                          "based windows")
 
             # this will raise ValueError on non-fixed freqs
             self.win_freq = self.window
@@ -2525,6 +2512,19 @@ def _get_center_of_mass(comass, span, halflife, alpha):
         raise ValueError("Must pass one of comass, span, halflife, or alpha")
 
     return float(comass)
+
+
+def _window_bounds(window, center):
+    if center:
+        left_offset = -window / 2.
+        right_offset = window / 2.
+    else:
+        left_offset = -window
+        right_offset = 0
+    try:
+        return int(left_offset), int(right_offset)
+    except TypeError:
+        return left_offset.astype(int), right_offset.astype(int)
 
 
 def _offset(window, center):
