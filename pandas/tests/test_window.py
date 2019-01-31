@@ -3459,9 +3459,9 @@ class TestRollingTS(object):
             with pytest.raises(ValueError):
                 df.rolling(window='1D', min_periods=minp)
 
-        # center is not implemented
-        with pytest.raises(NotImplementedError):
-            df.rolling(window='1D', center=True)
+        # centered windows
+        for freq in ['1D', pd.offsets.Day(2), '2ms']:
+            df.rolling(window='1D', center=True) ##KPAR##
 
     def test_on(self):
 
@@ -3700,7 +3700,50 @@ class TestRollingTS(object):
         expected['B'] = [0.0, 1, 3, 6, 10]
         tm.assert_frame_equal(result, expected)
 
-    def test_ragged_mean(self):
+    def test_ragged_sum_centered(self): ##KPAR##
+
+        df = self.ragged
+        result = df.rolling(window='1s', min_periods=1, center=True).sum()
+        expected = df.copy()
+        expected['B'] = [0.0, 1, 2, 3, 4]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window='2s', min_periods=1, center=True).sum()
+        expected = df.copy()
+        expected['B'] = [0.0, 3, 2, 7, 4]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window='2s', min_periods=2, center=True).sum()
+        expected = df.copy()
+        expected['B'] = [np.nan, 3, np.nan, 7, np.nan]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window='3s', min_periods=1, center=True).sum()
+        expected = df.copy()
+        expected['B'] = [0.0, 3, 3, 7, 7]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window='3s', center=True).sum()
+        expected = df.copy()
+        expected['B'] = [0.0, 3, 3, 7, 7]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window='4s', min_periods=1, center=True).sum()
+        expected = df.copy()
+        expected['B'] = [1.0, 3, 6, 7, 7]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window='4s', min_periods=3, center=True).sum()
+        expected = df.copy()
+        expected['B'] = [np.nan, np.nan, 6, np.nan, np.nan]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window='5s', min_periods=1, center=True).sum()
+        expected = df.copy()
+        expected['B'] = [1.0, 3, 6, 9, 7]
+        tm.assert_frame_equal(result, expected)
+
+    def test_ragged_mean(self): ##KPAR##
 
         df = self.ragged
         result = df.rolling(window='1s', min_periods=1).mean()
@@ -3713,7 +3756,7 @@ class TestRollingTS(object):
         expected['B'] = [0.0, 1, 1.5, 3.0, 3.5]
         tm.assert_frame_equal(result, expected)
 
-    def test_ragged_median(self):
+    def test_ragged_median(self): ##KPAR##
 
         df = self.ragged
         result = df.rolling(window='1s', min_periods=1).median()
@@ -3726,7 +3769,7 @@ class TestRollingTS(object):
         expected['B'] = [0.0, 1, 1.5, 3.0, 3.5]
         tm.assert_frame_equal(result, expected)
 
-    def test_ragged_quantile(self):
+    def test_ragged_quantile(self): ##KPAR##
 
         df = self.ragged
         result = df.rolling(window='1s', min_periods=1).quantile(0.5)
@@ -3739,7 +3782,7 @@ class TestRollingTS(object):
         expected['B'] = [0.0, 1, 1.5, 3.0, 3.5]
         tm.assert_frame_equal(result, expected)
 
-    def test_ragged_std(self):
+    def test_ragged_std(self): ##KPAR##
 
         df = self.ragged
         result = df.rolling(window='1s', min_periods=1).std(ddof=0)
@@ -3762,7 +3805,7 @@ class TestRollingTS(object):
         expected['B'] = [np.nan, 0.707107, 1.0, 1.0, 1.290994]
         tm.assert_frame_equal(result, expected)
 
-    def test_ragged_var(self):
+    def test_ragged_var(self): ##KPAR##
 
         df = self.ragged
         result = df.rolling(window='1s', min_periods=1).var(ddof=0)
@@ -3785,7 +3828,7 @@ class TestRollingTS(object):
         expected['B'] = [np.nan, 0.5, 1.0, 1.0, 1 + 2 / 3.]
         tm.assert_frame_equal(result, expected)
 
-    def test_ragged_skew(self):
+    def test_ragged_skew(self): ##KPAR##
 
         df = self.ragged
         result = df.rolling(window='3s', min_periods=1).skew()
@@ -3798,7 +3841,7 @@ class TestRollingTS(object):
         expected['B'] = [np.nan] * 2 + [0.0, 0.0, 0.0]
         tm.assert_frame_equal(result, expected)
 
-    def test_ragged_kurt(self):
+    def test_ragged_kurt(self): ##KPAR##
 
         df = self.ragged
         result = df.rolling(window='3s', min_periods=1).kurt()
@@ -3811,7 +3854,7 @@ class TestRollingTS(object):
         expected['B'] = [np.nan] * 4 + [-1.2]
         tm.assert_frame_equal(result, expected)
 
-    def test_ragged_count(self):
+    def test_ragged_count(self): ##KPAR##
 
         df = self.ragged
         result = df.rolling(window='1s', min_periods=1).count()
@@ -3860,7 +3903,7 @@ class TestRollingTS(object):
         expected['B'] = [5.0, 4, 3, 3, 3]
         tm.assert_frame_equal(result, expected)
 
-    def test_ragged_min(self):
+    def test_ragged_min(self): ##KPAR##
 
         df = self.ragged
 
@@ -3895,7 +3938,7 @@ class TestRollingTS(object):
         result = dfp.rolling('200s').min()
         assert ((result - expected) < 0.01).all().bool()
 
-    def test_ragged_max(self):
+    def test_ragged_max(self): ##KPAR##
 
         df = self.ragged
 
@@ -3914,7 +3957,7 @@ class TestRollingTS(object):
         expected['B'] = [0.0, 1, 2, 3, 4]
         tm.assert_frame_equal(result, expected)
 
-    def test_ragged_apply(self, raw):
+    def test_ragged_apply(self, raw): ##KPAR##
 
         df = self.ragged
 
