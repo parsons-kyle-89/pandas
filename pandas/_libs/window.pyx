@@ -637,20 +637,27 @@ def roll_mean(ndarray[float64_t] values, int64_t left_off,
     else:
 
         with nogil:
-            for i in range(minp - 1):
-                val = values[i]
-                add_mean(val, &nobs, &sum_x, &neg_ct)
-                output[i] = NaN
-
-            for i in range(minp - 1, N):
+        
+            for i in range(right_off):
                 val = values[i]
                 add_mean(val, &nobs, &sum_x, &neg_ct)
 
-                if i > win - 1:
-                    prev_x = values[i - win]
-                    remove_mean(prev_x, &nobs, &sum_x, &neg_ct)
+            for i in range(right_off, right_off + left_off):
+                val = values[i]
+                add_mean(val, &nobs, &sum_x, &neg_ct)
+                output[i-right_off] = calc_mean(minp, nobs, neg_ct, sum_x)
 
-                output[i] = calc_mean(minp, nobs, neg_ct, sum_x)
+            for i in range(right_off + left_off, N):
+                val = values[i]
+                add_mean(val, &nobs, &sum_x, &neg_ct)
+                prev_x = val[i - righ_off - left_off]
+                remove_mean(prev_x, &nobs, &sum_x, &neg_ct)
+                output[i-right_off] = calc_mean(minp, nobs, neg_ct, sum_x)
+
+           for i in range(N, N + right_off):
+                prev_x = val[i - righ_off - left_off]
+                remove_mean(prev_x, &nobs, &sum_x, &neg_ct)
+                output[i-right_off] = calc_mean(minp, nobs, neg_ct, sum_x)
 
     return output
 
