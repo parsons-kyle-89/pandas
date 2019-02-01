@@ -203,15 +203,15 @@ cdef class FixedWindowIndexer(WindowIndexer):
         start_m = np.arange(max(0, left_off), min(N + left_off, N),
                             dtype='int64')
         start_e = np.empty(max(0, left_off), dtype='int64')
-        start_e.fill(N)
+        start_e.fill(N - 1)
         self.start = np.concatenate([start_s, start_m, start_e])
 
         end_s = np.zeros(max(0, -right_off), dtype='int64')
         end_m = np.arange(max(right_off, 0), min(N, N + right_off),
                             dtype='int64')
         end_e = np.empty(max(right_off, 0), dtype='int64')
-        end_e.fill(N)
-        self.end = np.concatenate([end_s, end_m, end_e]) + 1
+        end_e.fill(N - 1)
+        self.end = np.concatenate([end_s, end_m, end_e])
 
         self.win = win
 
