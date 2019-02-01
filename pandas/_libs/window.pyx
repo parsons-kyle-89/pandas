@@ -68,10 +68,7 @@ def _check_minp(win, minp, N, floor=None):
         minp = 1
     if not util.is_integer_object(minp):
         raise ValueError("min_periods must be an integer")
-    if minp > win:
-        raise ValueError("min_periods (%d) must be <= "
-                         "window (%d)" % (minp, win))
-    elif minp > N:
+    if minp > N:
         minp = N + 1
     elif minp < 0:
         raise ValueError('min_periods must be >= 0')
@@ -199,18 +196,18 @@ cdef class FixedWindowIndexer(WindowIndexer):
         self.N = N
         self.minp = _check_minp(win, minp, self.N, floor=floor)
 
-        start_s = np.zeros(max(-left_off, 0), dtype='int64')
+        start_s = np.zeros(min(max(-left_off, 0), N), dtype='int64')
         start_m = np.arange(max(0, left_off), min(N + left_off, N),
                             dtype='int64')
-        start_e = np.empty(max(0, left_off), dtype='int64')
-        start_e.fill(N - 1)
+        start_e = np.empty(min(max(0, left_off), N), dtype='int64')
+        start_e.fill(N)
         self.start = np.concatenate([start_s, start_m, start_e])
 
-        end_s = np.zeros(max(0, -right_off), dtype='int64')
+        end_s = np.zeros(min(max(0, -right_off), N), dtype='int64')
         end_m = np.arange(max(right_off, 0), min(N, N + right_off),
                             dtype='int64')
-        end_e = np.empty(max(right_off, 0), dtype='int64')
-        end_e.fill(N - 1)
+        end_e = np.empty(min(max(right_off, 0), N), dtype='int64')
+        end_e.fill(N)
         self.end = np.concatenate([end_s, end_m, end_e])
 
         self.win = win

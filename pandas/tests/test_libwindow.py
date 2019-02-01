@@ -64,5 +64,15 @@ def test_fixed_window_indexer_start(fixed_window_indexer):
 
 def test_fixed_window_indexer_end(fixed_window_indexer):
     _, end, _, _, _, _, _, _ = fixed_window_indexer.get_data()
-    expected_end = np.array([2.0, 3, 4, 5, 6, 7, 8, 9, 9, 9])
+    expected_end = np.array([2.0, 3, 4, 5, 6, 7, 8, 9, 10, 10])
     nt.assert_array_equal(end, expected_end)
+
+@pytest.mark.parametrize("left_off", range(-3, 3))
+@pytest.mark.parametrize("right_off", range(-3, 3))
+def test_fixed_window_indexer_on_length_zero_array(left_off, right_off):
+    fixed_window_indexer = \
+        libwindow.FixedWindowIndexer(np.array([]), left_off, right_off,
+                                     0, 0, 0, None, None)
+    start, end, _, _, _, _, _, _ = fixed_window_indexer.get_data()
+    assert len(start) == 0
+    assert len(end) == 0
