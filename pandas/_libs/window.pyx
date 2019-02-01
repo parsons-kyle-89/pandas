@@ -639,33 +639,21 @@ def roll_mean(ndarray[float64_t] values, int64_t left_off,
                 add_mean(val, &nobs, &sum_x, &neg_ct)
                 output[i] = NaN
 
-<<<<<<< Updated upstream
             for i in range(right_off, right_off - left_off):
-=======
-            for i in range(minp - 1, N):
->>>>>>> Stashed changes
                 val = values[i]
                 add_mean(val, &nobs, &sum_x, &neg_ct)
 
-<<<<<<< Updated upstream
             for i in range(right_off - left_off, N):
                 val = values[i]
                 add_mean(val, &nobs, &sum_x, &neg_ct)
-                prev_x = val[i - righ_off + left_off]
+                prev_x = values[i - right_off + left_off]
                 remove_mean(prev_x, &nobs, &sum_x, &neg_ct)
                 output[i-right_off] = calc_mean(minp, nobs, neg_ct, sum_x)
 
-           for i in range(N, N + right_off):
-                prev_x = val[i - righ_off + left_off]
+            for i in range(N, N + right_off):
+                prev_x = values[i - right_off + left_off]
                 remove_mean(prev_x, &nobs, &sum_x, &neg_ct)
                 output[i-right_off] = calc_mean(minp, nobs, neg_ct, sum_x)
-=======
-                if i > win - 1:
-                    prev_x = values[i - win]
-                    remove_mean(prev_x, &nobs, &sum_x, &neg_ct)
-
-                output[i] = calc_mean(minp, nobs, neg_ct, sum_x)
->>>>>>> Stashed changes
 
     return output
 
