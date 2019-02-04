@@ -68,8 +68,8 @@ def test_fixed_window_indexer_end(fixed_window_indexer):
     nt.assert_array_equal(end, expected_end)
 
 
-@pytest.mark.parametrize("left_off", range(-2, 3))
-@pytest.mark.parametrize("right_off", range(-2, 3))
+@pytest.mark.parametrize("left_off", range(-2, 0))
+@pytest.mark.parametrize("right_off", range(1, 3))
 def test_fixed_window_indexer_on_length_zero_array(left_off, right_off):
     fixed_window_indexer = \
         libwindow.FixedWindowIndexer(np.array([]), left_off, right_off,
@@ -131,3 +131,44 @@ def test_varaible_window_indexer_end_open_right():
     _, end, _, _, _, _, _, _ = indexer.get_data()
     expected_end = np.array([2, 2, 4, 4, 6, 6, 8, 8, 10, 10])
     nt.assert_array_equal(end, expected_end)
+
+ROLL_FUNCTION_PARAMETER_SETS = (
+    {"values": range(10),
+     "left_off": -2,
+     "right_off": 2,
+     "minp": 1,
+     "index": [-2, -1, 1, 2, 4, 5, 7, 8, 10, 11],
+     "closed": None},
+
+    {"values": range(10),
+     "left_off": -2,
+     "right_off": 2,
+     "minp": 1,
+     "index": None,
+     "closed": None}
+)
+
+ROLL_FUNCTION_PARAMETER_SET_IDS = (
+    "basic index",
+    "basic no index"
+)
+
+@pytest.mark.parametrize(
+    ["params", "expected_data"],
+
+    zip(ROLL_FUNCTION_PARAMETER_SETS,
+        ([1.0, 3, 5, 9, 9, 15, 13, 21, 17, 17],
+         [1.0, 3, 6, 10, 14, 18, 22, 26, 30, 24])),
+
+    ids = ROLL_FUNCTION_PARAMETER_SET_IDS
+)
+def test_roll_sum(params, expected_data):
+    values = np.array(params["values"], dtype=np.float64)
+    left_off = params["left_off"]
+    right_off = params["right_off"]
+    minp = params["minp"]
+    index = np.array(params["index"]) if params["index"] is not None else None
+    closed = params["closed"]
+    actual = libwindow.roll_sum(values, left_off, right_off, minp, index, closed)
+    expected = np.array(expected_data)
+    nt.assert_array_equal(actual, expected)

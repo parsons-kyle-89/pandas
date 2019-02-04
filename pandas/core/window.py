@@ -5,6 +5,7 @@ similar to how we have a Groupby object.
 from __future__ import division
 
 from collections import defaultdict
+from math import ceil
 from datetime import timedelta
 from textwrap import dedent
 import warnings
@@ -2516,11 +2517,11 @@ def _get_center_of_mass(comass, span, halflife, alpha):
 
 def _window_bounds(window, center):
     if center:
-        left_offset = -window / 2.
-        right_offset = window / 2.
+        left_offset = ceil(-window / 2)
+        right_offset = ceil(window / 2)
     else:
-        left_offset = -window
-        right_offset = 0
+        left_offset = 1 - window
+        right_offset = 1
     try:
         return int(left_offset), int(right_offset)
     except TypeError:

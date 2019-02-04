@@ -68,7 +68,10 @@ def _check_minp(win, minp, N, floor=None):
         minp = 1
     if not util.is_integer_object(minp):
         raise ValueError("min_periods must be an integer")
-    if minp > N:
+    if minp > win:
+        raise ValueError("min_periods (%d) must be <= "
+                         "window (%d)" % (minp, win))
+    elif minp > N:
         minp = N + 1
     elif minp < 0:
         raise ValueError('min_periods must be >= 0')
@@ -465,7 +468,7 @@ cdef inline void remove_sum(float64_t val,
 def roll_sum(ndarray[float64_t] values, int64_t left_off, int64_t right_off,
              int64_t minp, object index, object closed):
     cdef:
-        float64_t val, prev_x, sum_x = 0
+        float64_t val, prev_x, next_x, sum_x = 0
         int64_t s, e, range_endpoint, win
         int64_t nobs = 0, i, j, N
         bint is_variable
@@ -514,20 +517,26 @@ def roll_sum(ndarray[float64_t] values, int64_t left_off, int64_t right_off,
 
         # fixed window
 
-        range_endpoint = int_max(minp, 1) - 1
+        range_endpoint = max(minp - right_off, 0)
 
         with nogil:
 
+            # prime nobs and sum_x
+
+            for j in range(0, right_off - 1):
+                add_sum(values[j], &nobs, &sum_x)
+
             for i in range(0, range_endpoint):
-                add_sum(values[i], &nobs, &sum_x)
                 output[i] = NaN
 
             for i in range(range_endpoint, N):
-                val = values[i]
-                add_sum(val, &nobs, &sum_x)
 
-                if i > win - 1:
-                    prev_x = values[i - win]
+                if i + right_off - 1 < N:
+                    next_x = values[i + right_off - 1]
+                    add_sum(next_x, &nobs, &sum_x)
+
+                if i > -left_off:
+                    prev_x = values[i + left_off - 1]
                     remove_sum(prev_x, &nobs, &sum_x)
 
                 output[i] = calc_sum(minp, nobs, sum_x)
