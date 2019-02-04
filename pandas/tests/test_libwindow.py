@@ -172,3 +172,42 @@ def test_roll_sum(params, expected_data):
     actual = libwindow.roll_sum(values, left_off, right_off, minp, index, closed)
     expected = np.array(expected_data)
     nt.assert_array_equal(actual, expected)
+
+
+def roll_mean_with_fix_window(right, left, minp):
+    values = np.array(list(range(5)))
+    left_off = left
+    right_off = right
+    minp = minp
+    index = None
+    closed = None
+    return libwindow.roll_mean(values, left_off, right_off, minp, index, closed)
+
+
+@pytest.mark.parametrize(
+    "params, expected",
+
+    [({"right": 0,
+       "left": -0,
+       "minp": 1},
+      np.array([0.0, 1, 2, 3, 4])),
+     ({"right": 1,
+       "left": -1,
+       "minp": 1},
+      np.array([0.5, 1, 2, 3, 3.5])),
+     ({"right": 1,
+       "left": -2,
+       "minp": 1},
+      np.array([0.5, 1, 6.0 / 4, 2.5, 3])),
+     ({"right": 1,
+       "left": -1,
+       "minp": 3},
+      np.array([np.nan, 1, 2, 3, np.nan])),
+     ({"right": 1,
+       "left": -2,
+       "minp": 3},
+      np.array([np.nan, 1, 6.0 / 4, 2.5, 3]))]
+)
+def test_roll_mean_with_fix_window(params, expected):
+    actual = roll_mean_with_fix_window(**params)
+    np.testing.assert_array_almost_equal(actual, expected)
