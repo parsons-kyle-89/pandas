@@ -643,26 +643,31 @@ def roll_mean(ndarray[float64_t] values, int64_t left_off,
     else:
 
         with nogil:
-            for i in range(minp - 1):
-                val = values[i]
-                add_mean(val, &nobs, &sum_x, &neg_ct)
-                output[i] = NaN
 
-            for i in range(right_off, right_off - left_off):
+            # add the right half window without output
+            for i in range(right_off - 1):
                 val = values[i]
                 add_mean(val, &nobs, &sum_x, &neg_ct)
 
+            # add the left half window with output, no remove
+            for i in range(right_off - 1, right_off - left_off):
+                val = values[i]
+                add_mean(val, &nobs, &sum_x, &neg_ct)
+                output[i - right_off + 1] = calc_mean(minp, nobs, neg_ct, sum_x)
+
+            # after first window, add and remove
             for i in range(right_off - left_off, N):
                 val = values[i]
                 add_mean(val, &nobs, &sum_x, &neg_ct)
                 prev_x = values[i - right_off + left_off]
                 remove_mean(prev_x, &nobs, &sum_x, &neg_ct)
-                output[i-right_off] = calc_mean(minp, nobs, neg_ct, sum_x)
+                output[i - right_off + 1] = calc_mean(minp, nobs, neg_ct, sum_x)
 
-            for i in range(N, N + right_off):
+            # at last window, only remove left.
+            for i in range(N, N + right_off - 1):
                 prev_x = values[i - right_off + left_off]
                 remove_mean(prev_x, &nobs, &sum_x, &neg_ct)
-                output[i-right_off] = calc_mean(minp, nobs, neg_ct, sum_x)
+                output[i - right_off + 1] = calc_mean(minp, nobs, neg_ct, sum_x)
 
     return output
 
@@ -790,20 +795,26 @@ def roll_var(ndarray[float64_t] values, int64_t left_off,
 
         with nogil:
 
-            # Over the first window, observations can only be added, never
+            # Over the first window observations can only be added, never
             # removed
-            for i in range(win):
+
+            # for the first right half window, no output need being calculated
+            for i in range(right_off - 1):
                 add_var(values[i], &nobs, &mean_x, &ssqdm_x)
-                output[i] = calc_var(minp, ddof, nobs, ssqdm_x)
+
+            # for the left half window, output need be properly calculated
+            for i in range(right_off - 1, right_off - left_off):
+                add_var(values[i], &nobs, &mean_x, &ssqdm_x)
+                output[i - right_off + 1] = calc_var(minp, ddof, nobs, ssqdm_x)
 
             # a part of Welford's method for the online variance-calculation
             # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
 
             # After the first window, observations can both be added and
             # removed
-            for i in range(win, N):
+            for i in range(right_off - left_off, N):
                 val = values[i]
-                prev = values[i - win]
+                prev = values[i - right_off + left_off]
 
                 if notnan(val):
                     if prev == prev:
@@ -822,7 +833,15 @@ def roll_var(ndarray[float64_t] values, int64_t left_off,
                 elif prev == prev:
                     remove_var(prev, &nobs, &mean_x, &ssqdm_x)
 
-                output[i] = calc_var(minp, ddof, nobs, ssqdm_x)
+                output[i - right_off + 1] = calc_var(minp, ddof, nobs, ssqdm_x)
+
+            # After right_edge accross the end
+            # observations can be only removed
+
+            for i in range(N, N + right_off - 1):
+                prev = values[i - right_off + left_off]
+                remove_var(prev, &nobs, &mean_x, &ssqdm_x)
+                output[i - right_off + 1] = calc_var(minp, ddof, nobs, ssqdm_x)
 
     return output
 
